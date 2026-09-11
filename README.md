@@ -1,0 +1,58 @@
+# 어디군
+
+시청·군청 사이 거리만 보고 오늘의 시·군을 맞히는 하루 한 문제 게임. 제일 빨리 맞힌 사람이 1등.
+
+**하기 → https://41ways.github.io/eodigun/**
+
+- 매일 자정(KST)에 전국 시·군 167곳 중 하나가 정답
+- 한 곳을 부르면 그곳 청사에서 정답 청사까지의 직선거리와, 167곳 중 몇 번째로 가까운지 알려 줌
+- 시계는 첫 추측부터 정답까지 서버가 잼. 순위는 빠른 순, 같으면 적게 부른 순
+- 특별·광역시와 세종은 구 없이 한 칸. 광주는 옛 광주광역시 지역(2026.7.1부터 전남광주통합특별시)
+
+## 구조
+
+| 경로 | 하는 일 |
+|---|---|
+| `index.html`, `map.json` | 게임 화면 (GitHub Pages) |
+| `data/units.json` | 칸 167곳 이름과 청사 좌표 (서버가 씀) |
+| `worker/` | 정답·거리·순위 서버 — Cloudflare Worker `eodigun` + D1 `eodigun` |
+| `build/` | 경계·청사 데이터를 만드는 스크립트 |
+
+정답은 서버만 안다. 비밀값 `ANSWER_SALT`로 섞은 순서에서 날짜별로 꺼내므로 코드를 봐도 미리 알 수 없다.
+
+## 서버 고치기
+
+```sh
+cd worker
+npx wrangler deploy            # 코드 반영 (GitHub 푸시만으로는 안 바뀜)
+node test-game.js              # 정답 순서·거리·순위 확인
+```
+
+로컬: `.dev.vars`에 `ANSWER_SALT=아무값`을 두고 `npx wrangler d1 execute eodigun --local --file schema.sql` 뒤 `npx wrangler dev --port 8832`. 화면은 localhost에서 열면 알아서 8832를 부른다.
+
+## 데이터 다시 만들기
+
+```sh
+cd build
+curl -L -o raw/dong.geojson https://raw.githubusercontent.com/vuski/admdongkor/master/ver20260701/HangJeongDong_ver20260701.geojson
+python3 units.py                                   # 행정동 → 시·군 칸
+npx mapshaper raw/dong-u.geojson -dissolve u -o raw/units-full.geojson
+npx mapshaper raw/units-full.geojson -simplify 4% keep-shapes -filter-islands min-area=2km2 -o precision=0.0001 raw/units-simple.geojson
+# raw/townhall.json 은 Overpass 에서 amenity=townhall 로 받은 청사 (README 아래 쿼리)
+python3 match.py                                   # 청사를 칸에 붙임 (경계 안에 있는 점만)
+python3 build.py                                   # data/units.json, map.json
+```
+
+OSM에 없거나 이름이 달라 안 잡힌 청사는 `build/halls-manual.json`에 직접 적었다. 옹진군청은 군 밖(인천 미추홀구)에 있어서 그대로 둔다.
+
+Overpass 쿼리:
+
+```
+[out:json][timeout:120];area["ISO3166-1"="KR"][admin_level=2]->.a;
+nwr["amenity"="townhall"]["name"~"(시청|군청|시 ?청사|군 ?청사)"](area.a);out center tags;
+```
+
+## 출처
+
+- 경계: [vuski/admdongkor](https://github.com/vuski/admdongkor) 행정동 경계 2026-07-01판
+- 청사 위치: © [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 (ODbL)
