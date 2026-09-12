@@ -81,6 +81,12 @@ export function score(ans, guess) {
   return r === 0 ? 100 : Math.round((100 - r * STEP) * 100) / 100;
 }
 
+/* 무한 연습 — 판마다 서버가 무작위 표(rid)를 내주고, 정답은 그 표를 비밀값으로 섞어 되찾는다.
+   표만 봐서는 정답을 알 수 없고 서버에 아무것도 쌓이지 않는다 */
+export function freeAnswer(rid, salt) {
+  return hash(salt + ':free:' + rid) % N;
+}
+
 export function judge(ans, guess) {
   return { id: UNITS[guess].id, score: score(ans, guess), rank: ranks(ans)[guess], correct: ans === guess };
 }

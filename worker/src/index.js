@@ -6,11 +6,14 @@
    POST /api/guess                 { day, pid, id, name }  → 점수·순위 (맞히면 기록)
    POST /api/giveup                { day, pid }            → 정답 공개, 순위에서 빠짐
    POST /api/name                  { day, pid, name }      → 순위표 이름 바꾸기
+   GET  /api/free                                          무한 연습 새 판 (표 하나)
+   POST /api/free/guess            { rid, id }             무한 연습 점수·순위
+   POST /api/free/giveup           { rid }                 무한 연습 정답 공개
 
    정답은 여기서만 안다. 브라우저에 거리는 아예 안 나간다 — "가까운 순서"와 그걸로 매긴 점수뿐.
    시간도 서버가 잰다 — 그날 첫 추측을 받은 순간부터 정답을 받은 순간까지.
    ══════════════════════════════════════════════════════════════════ */
-import { UNITS, N, INDEX, kstDay, puzzleNo, answerIndex, judge } from './game.js';
+import { UNITS, N, INDEX, kstDay, puzzleNo, answerIndex, judge, freeAnswer } from './game.js';
 
 const MAX_BODY = 2 * 1024;
 const MAX_NAME = 12;
@@ -124,6 +127,14 @@ export default {
         }, 200, h);
       }
 
+      /* 무한 연습 — 기록을 남기지 않으므로 하루 한 판 제한과 무관하다 */
+      if (url.pathname === '/api/free' && req.method === 'GET') {
+        const b = new Uint8Array(16);
+        crypto.getRandomValues(b);
+        const rid = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        return json({ rid, n: N }, 200, h);
+      }
+
       if (url.pathname === '/api/top' && req.method === 'GET') {
         const day = parseInt(url.searchParams.get('day'), 10);
         if (!Number.isInteger(day)) return json({ error: 'day' }, 400, h);
@@ -170,6 +181,18 @@ export default {
           res.order = await solveOrder(env, day, now);
           res.board = await board(env, day, pid);
         }
+        return json(res, 200, h);
+      }
+
+      if (url.pathname === '/api/free/guess' || url.pathname === '/api/free/giveup') {
+        const rid = String(body.rid || '');
+        if (!/^[0-9a-f]{32}$/.test(rid)) return json({ error: 'rid' }, 400, h);
+        const ans = freeAnswer(rid, salt);
+        if (url.pathname === '/api/free/giveup') return json({ answer: unitOut(ans) }, 200, h);
+        const g = INDEX.get(String(body.id));
+        if (g == null) return json({ error: '없는 시·군' }, 400, h);
+        const res = { ...judge(ans, g), n: N };
+        if (res.correct) res.answer = unitOut(ans);
         return json(res, 200, h);
       }
 
