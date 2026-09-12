@@ -183,6 +183,10 @@ h1 .no{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--faint)
 .done h2{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:30px;letter-spacing:-.02em;line-height:1.1}
 .done p{margin:0 0 10px;color:var(--dim);font-size:14px}
 .done .big{font-family:var(--mono);font-size:15px;color:var(--ink);font-weight:600;letter-spacing:-.02em}
+.shape{display:block;width:auto;height:clamp(92px,24vw,128px);margin:0 auto 14px}
+.shape path{fill:var(--ink)}
+.shape circle{fill:var(--accent);stroke:var(--panel);stroke-width:1.2px;vector-effect:non-scaling-stroke}
+.shapecap{margin:-8px 0 12px;text-align:center;font-size:10.5px;color:var(--faint);letter-spacing:.12em}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row input{flex:1;min-width:120px;padding:9px 12px;border:1.5px solid var(--ink);background:var(--panel);outline:none}
 .row input:focus{border-color:var(--accent)}
@@ -190,6 +194,8 @@ h1 .no{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--faint)
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn.dark{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .next{font-size:11.5px;color:var(--faint);margin-top:12px;letter-spacing:.06em}
+.pwnote{margin:8px 0 0;font-size:11.5px;color:var(--faint);line-height:1.65}
+.pwnote b{color:var(--dim)}
 
 /* ── 부른 곳 목록 ── */
 .listbox{padding:0 0 10px}
@@ -665,6 +671,21 @@ function render(){
   tick();
 }
 
+/* 정답 칸의 윤곽 — 지도에 이미 그려 둔 경로를 그 칸 크기에 맞춰 다시 그린다 */
+function shapeSvg(id){
+  var i = BY[id], u = i == null ? null : U[i];
+  if (!u || !u.el) return '';
+  var b;
+  try { b = u.el.getBBox(); } catch (e) { return ''; }
+  if (!b || !b.width) return '';
+  var pad = Math.max(b.width, b.height) * .09;
+  var r = Math.max(b.width, b.height) * .036;
+  return '<svg class="shape" viewBox="' + (b.x - pad) + ' ' + (b.y - pad) + ' ' +
+    (b.width + pad * 2) + ' ' + (b.height + pad * 2) + '" role="img" aria-label="' + esc(u.name) + ' 모양">' +
+    '<path d="' + u.d + '"/><circle cx="' + (u.hx * M.scale) + '" cy="' + (u.hy * M.scale) + '" r="' + r + '"/></svg>' +
+    '<p class="shapecap">붉은 점이 ' + esc(u.name.replace(/시$/, '청').replace(/군$/, '청')) + ' 자리</p>';
+}
+
 function renderDone(){
   var box = $('#done');
   if (!S.solved && !S.gaveup) { box.hidden = true; return; }
@@ -672,6 +693,7 @@ function renderDone(){
   $('#doneTitle').textContent = (S.free ? '무한 연습 · ' : '') + (S.solved ? '맞혔습니다' : '포기했습니다');
   if (S.free) {
     var f = freeStat(0);
+    h += shapeSvg(a.id);
     h += '<h2>' + (S.solved ? '📍 ' : '정답은 ') + esc(a.full) + '</h2>';
     h += '<p class="big">' + S.list.length + '번 만에' + (S.solved ? ' · ' + fmtKo(S.elapsed) : '') + '</p>';
     h += '<p>' + (f.n ? '여태 ' + f.n + '판 · 평균 ' + (Math.round(f.avg * 10) / 10) + '번' : '') + '</p>';
@@ -684,16 +706,20 @@ function renderDone(){
   }
   if (S.solved) {
     var b = S.board, mine = b && b.mine;
-    h += '<h2>📍 ' + esc(a.full) + '</h2>';
+    h += shapeSvg(a.id) + '<h2>📍 ' + esc(a.full) + '</h2>';
     h += '<p class="big">' + S.list.length + '번 만에 · ' + fmtKo(S.elapsed) + '</p>';
     h += '<p>' + (S.order ? '오늘 ' + S.order + '번째로 맞혔습니다' : '맞혔습니다') +
          (mine ? ' · 속도 순위 <b>' + mine.rank + '위</b> / ' + b.count + '명' : '') + '</p>';
-    var nm = lsGet('eodigun-name') || '';
-    h += '<div class="row"><input id="nameIn" maxlength="12" placeholder="순위표에 남길 이름" value="' + esc(nm) + '">' +
-         '<button class="btn dark" id="nameSave">' + (nm ? '이름 바꾸기' : '이름 남기기') + '</button></div>';
+    var nm = lsGet('eodigun-name') || '', pw = lsGet('eodigun-pw') || '', tg = lsGet('eodigun-tag') || '';
+    h += '<div class="row"><input id="nameIn" maxlength="12" placeholder="이름" value="' + esc(nm) + '">' +
+         '<input id="pwIn" type="password" maxlength="32" placeholder="기록용 비밀번호" value="' + esc(pw) + '">' +
+         '<button class="btn dark" id="nameSave">' + (tg ? '남기기' : '이름 남기기') + '</button></div>';
+    h += '<p class="pwnote" id="pwnote">' + (tg ? '지금 <b>' + esc(tg) + '</b> 로 남깁니다 · ' : '') +
+         '같은 이름에 같은 비밀번호를 쓰면 기기가 달라도 한 사람으로 셉니다. 다른 비밀번호를 쓰면 ' +
+         esc(nm || '이름') + '#2 로 갈라집니다.<br>되찾을 방법이 없으니 <b>다른 데 쓰는 비밀번호는 쓰지 마세요.</b></p>';
     h += '<div class="row" style="margin-top:8px"><button class="btn" id="share">결과 복사</button><button class="btn" id="seeBoard">오늘 순위 보기</button></div>';
   } else {
-    h += '<h2>정답은 ' + esc(a.full) + '</h2>';
+    h += shapeSvg(a.id) + '<h2>정답은 ' + esc(a.full) + '</h2>';
     h += '<p>' + S.list.length + '곳 부르고 포기했습니다. 포기한 판은 순위에 오르지 않습니다.</p>';
     h += '<div class="row"><button class="btn" id="seeBoard">오늘 순위 보기</button></div>';
   }
@@ -703,8 +729,10 @@ function renderDone(){
 
   var ns = $('#nameSave');
   if (ns) ns.onclick = saveName;
-  var ni = $('#nameIn');
-  if (ni) ni.onkeydown = function(e){ if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveName(); };
+  ['#nameIn', '#pwIn'].forEach(function(sel){
+    var el = $(sel);
+    if (el) el.onkeydown = function(e){ if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveName(); };
+  });
   var sh = $('#share');
   if (sh) sh.onclick = share;
   $('#seeBoard').onclick = function(){ openBoard('today'); };
@@ -712,12 +740,15 @@ function renderDone(){
 
 function saveName(){
   var v = ($('#nameIn').value || '').replace(/[<>]/g, '').trim().slice(0, 12);
+  var pw = ($('#pwIn') ? $('#pwIn').value : '').trim().slice(0, 32);
   $('#nameIn').value = v;
-  lsSet('eodigun-name', v);
-  api('/api/name', { day:S.day, pid:PID, name:v }).then(function(b){
+  if (!v) { $('#nameIn').focus(); return; }
+  lsSet('eodigun-name', v); lsSet('eodigun-pw', pw);
+  api('/api/name', { day:S.day, pid:PID, name:v, pw:pw }).then(function(b){
     S.board = b;
-    var ns = $('#nameSave'); if (ns) ns.textContent = '저장됨 ✓';
-    setTimeout(backToTitle, 600);
+    if (b.tag) lsSet('eodigun-tag', b.tag);
+    var ns = $('#nameSave'); if (ns) ns.textContent = b.tag ? b.tag + ' ✓' : '저장됨 ✓';
+    setTimeout(backToTitle, b.tag ? 900 : 600);
   }).catch(function(e){ alert('이름을 못 올렸습니다: ' + e.message); });
 }
 
