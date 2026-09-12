@@ -354,7 +354,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
   <div class="dh"><h3 id="boardTitle">순위</h3><button class="x" data-close aria-label="닫기">×</button></div>
   <div class="tabs" role="tablist">
     <button class="tab on" id="tabToday" role="tab">오늘</button>
-    <button class="tab" id="tabAll" role="tab">전체</button>
+    <button class="tab" id="tabAll" role="tab">플레이어</button>
     <button class="tab" id="tabBest" role="tab">최고 기록</button>
   </div>
   <div class="db" id="boardBody"></div>
@@ -761,6 +761,7 @@ function allHtml(b){
   }
   h += '</tbody></table><p style="color:var(--faint);font-size:12px;margin:10px 0 0;line-height:1.7">' +
     '여태 ' + b.people + '명이 ' + b.plays + '판을 맞혔습니다 · 맞힌 날이 많은 순, 같으면 평균이 빠른 순<br>' +
+    '한 판의 가장 빠른 기록은 최고 기록 갈피에 따로 남습니다<br>' +
     '기록은 이 브라우저에 붙습니다 — 다른 기기에서 하면 다른 사람으로 셉니다.</p>';
   return h;
 }
@@ -785,7 +786,7 @@ function openBoard(which){
   $('#tabToday').className = 'tab' + (tab === 'today' ? ' on' : '');
   $('#tabAll').className = 'tab' + (tab === 'all' ? ' on' : '');
   $('#tabBest').className = 'tab' + (tab === 'best' ? ' on' : '');
-  $('#boardTitle').textContent = tab === 'all' ? '전체 순위' : tab === 'best' ? '최고 기록'
+  $('#boardTitle').textContent = tab === 'all' ? '플레이어 순위' : tab === 'best' ? '최고 기록'
     : '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
   $('#boardBody').innerHTML = '<p style="color:var(--faint)">불러오는 중…</p>';
   if (!d.open) d.showModal();
