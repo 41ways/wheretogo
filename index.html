@@ -355,6 +355,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
   <div class="tabs" role="tablist">
     <button class="tab on" id="tabToday" role="tab">오늘</button>
     <button class="tab" id="tabAll" role="tab">전체</button>
+    <button class="tab" id="tabBest" role="tab">최고 기록</button>
   </div>
   <div class="db" id="boardBody"></div>
 </dialog>
@@ -731,16 +732,32 @@ function share(){
 }
 
 // ══════════════════════════════ 순위표
+function bestHtml(b){
+  if (!b.rows.length) return '<p style="color:var(--faint);font-size:14px;margin:6px 0 10px">아직 쌓인 기록이 없습니다.</p>';
+  var h = '<table class="board"><thead><tr><th></th><th>이름</th><th style="text-align:right">기록</th>' +
+    '<th style="text-align:right">횟수</th><th style="text-align:right">문제</th></tr></thead><tbody>';
+  b.rows.forEach(function(r){
+    h += '<tr' + (r.me ? ' class="me"' : '') + '><td class="rk1 num">' + r.rank + '</td><td>' + esc(r.name) + '</td>' +
+      '<td class="t num" style="color:var(--accent);font-weight:600">' + fmt(r.elapsed, true) + '</td>' +
+      '<td class="g num">' + r.guesses + '번</td><td class="g num">제' + r.no + '호</td></tr>';
+  });
+  h += '</tbody></table><p style="color:var(--faint);font-size:12px;margin:10px 0 0;line-height:1.7">' +
+    '여태 가장 빨리 맞힌 열 판 · 하루치가 아니라 영영 남습니다</p>';
+  return h;
+}
+
 function allHtml(b){
   if (!b.rows.length) return '<p style="color:var(--faint);font-size:14px;margin:6px 0 10px">아직 쌓인 기록이 없습니다.</p>';
   var row = function(r, cls){
     return '<tr' + (cls || (r.me ? ' class="me"' : '')) + '><td class="rk1 num">' + r.rank + '</td><td>' + esc(r.name) + '</td>' +
-      '<td class="g num">' + r.days + '일</td><td class="t num">' + fmt(r.avg, true) + '</td></tr>';
+      '<td class="g num">' + r.days + '일</td><td class="t num">' + fmt(r.avg, true) + '</td>' +
+      '<td class="t num" style="color:var(--accent)">' + fmt(r.best, true) + '</td></tr>';
   };
-  var h = '<table class="board"><thead><tr><th></th><th>이름</th><th style="text-align:right">맞힌 날</th><th style="text-align:right">평균</th></tr></thead><tbody>';
+  var h = '<table class="board"><thead><tr><th></th><th>이름</th><th style="text-align:right">맞힌 날</th>' +
+    '<th style="text-align:right">평균</th><th style="text-align:right">최고</th></tr></thead><tbody>';
   b.rows.forEach(function(r){ h += row(r); });
   if (b.mine && !b.rows.some(function(r){ return r.me; })) {
-    h += '<tr class="gap"><td colspan="4">⋯</td></tr>' + row(b.mine, ' class="me"');
+    h += '<tr class="gap"><td colspan="5">⋯</td></tr>' + row(b.mine, ' class="me"');
   }
   h += '</tbody></table><p style="color:var(--faint);font-size:12px;margin:10px 0 0;line-height:1.7">' +
     '여태 ' + b.people + '명이 ' + b.plays + '판을 맞혔습니다 · 맞힌 날이 많은 순, 같으면 평균이 빠른 순<br>' +
@@ -767,12 +784,16 @@ function openBoard(which){
   var tab = which || 'today', d = $('#dlgBoard');
   $('#tabToday').className = 'tab' + (tab === 'today' ? ' on' : '');
   $('#tabAll').className = 'tab' + (tab === 'all' ? ' on' : '');
-  $('#boardTitle').textContent = tab === 'all' ? '전체 순위' : '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
+  $('#tabBest').className = 'tab' + (tab === 'best' ? ' on' : '');
+  $('#boardTitle').textContent = tab === 'all' ? '전체 순위' : tab === 'best' ? '최고 기록'
+    : '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
   $('#boardBody').innerHTML = '<p style="color:var(--faint)">불러오는 중…</p>';
   if (!d.open) d.showModal();
   if (S.day == null) { $('#boardBody').innerHTML = '<p>서버에 연결하지 못했습니다.</p>'; return; }
-  var call = tab === 'all' ? api('/api/all?me=' + PID) : api('/api/top?day=' + S.day + '&me=' + PID);
-  call.then(function(b){ $('#boardBody').innerHTML = tab === 'all' ? allHtml(b) : boardHtml(b); })
+  var call = tab === 'all' ? api('/api/all?me=' + PID)
+           : tab === 'best' ? api('/api/best?me=' + PID)
+           : api('/api/top?day=' + S.day + '&me=' + PID);
+  call.then(function(b){ $('#boardBody').innerHTML = tab === 'all' ? allHtml(b) : tab === 'best' ? bestHtml(b) : boardHtml(b); })
     .catch(function(e){ $('#boardBody').innerHTML = '<p>못 불러왔습니다: ' + esc(e.message) + '</p>'; });
 }
 
@@ -969,6 +990,7 @@ $('#dlgDone').addEventListener('close', function(){ if (!S.free && (S.solved || 
 $('#btnFree').addEventListener('click', startFree);
 $('#tabToday').addEventListener('click', function(){ openBoard('today'); });
 $('#tabAll').addEventListener('click', function(){ openBoard('all'); });
+$('#tabBest').addEventListener('click', function(){ openBoard('best'); });
 $('#btnHelp2').addEventListener('click', function(){ $('#dlgHelp').showModal(); });
 $('#btnBoard2').addEventListener('click', function(){ openBoard('today'); });
 $('#btnGiveup').addEventListener('click', giveup);

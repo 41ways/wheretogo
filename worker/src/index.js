@@ -4,6 +4,7 @@
    GET  /api/today?me=<pid>        오늘 문제 번호, 푼 사람 수, 어제 정답, 내 기록
    GET  /api/top?day=&me=<pid>     그날 순위 (위 20명 + 내 자리)
    GET  /api/all?me=<pid>          전체 순위 — 맞힌 날 수 순, 같으면 평균이 빠른 순
+   GET  /api/best?me=<pid>         최고 기록 — 여태 가장 빨리 맞힌 판들
    POST /api/guess                 { day, pid, id, name }  → 점수·순위 (맞히면 기록)
    POST /api/giveup                { day, pid }            → 정답 공개, 순위에서 빠짐
    POST /api/name                  { day, pid, name }      → 순위표 이름 바꾸기
@@ -159,6 +160,18 @@ export default {
         return json({ rows, mine, people: tot.results[0].people, plays: tot.results[0].plays }, 200, h);
       }
 
+      /* 최고 기록 — 꾸준함으로 줄 세우는 전체 순위에서 밀려나는, 한 판의 가장 빠른 기록 */
+      if (url.pathname === '/api/best' && req.method === 'GET') {
+        const me = url.searchParams.get('me');
+        const r = await env.DB.prepare(
+          'SELECT pid, name, day, elapsed, guesses FROM plays ' +
+          'WHERE gaveup = 0 AND solved_at IS NOT NULL ORDER BY elapsed ASC, guesses ASC LIMIT 10').all();
+        return json({ rows: r.results.map((x, i) => ({
+          rank: i + 1, name: x.name || '이름없음', no: puzzleNo(x.day),
+          elapsed: x.elapsed, guesses: x.guesses, me: !!(me && x.pid === me),
+        })) }, 200, h);
+      }
+
       /* 무한 연습 — 기록을 남기지 않으므로 하루 한 판 제한과 무관하다 */
       if (url.pathname === '/api/free' && req.method === 'GET') {
         const b = new Uint8Array(16);
@@ -182,6 +195,20 @@ export default {
       // ─────────────── 여기부터 POST
       if (!allowed(origin, env)) return json({ error: '허락되지 않은 페이지' }, 403, h);
       const body = await readBody(req);
+
+      /* 무한 연습은 날짜도 사람도 쓰지 않는다 — 아래 검사보다 먼저 갈라져야 한다 */
+      if (url.pathname === '/api/free/guess' || url.pathname === '/api/free/giveup') {
+        const rid = String(body.rid || '');
+        if (!/^[0-9a-f]{32}$/.test(rid)) return json({ error: 'rid' }, 400, h);
+        const fans = freeAnswer(rid, salt);
+        if (url.pathname === '/api/free/giveup') return json({ answer: unitOut(fans) }, 200, h);
+        const fg = INDEX.get(String(body.id));
+        if (fg == null) return json({ error: '없는 시·군' }, 400, h);
+        const fres = { ...judge(fans, fg), n: N };
+        if (fres.correct) fres.answer = unitOut(fans);
+        return json(fres, 200, h);
+      }
+
       const { day, pid } = body;
       if (!dayOk(day)) return json({ error: '오늘 문제가 아님 — 새로고침해 주세요' }, 409, h);
       if (!pidOk(pid)) return json({ error: 'pid' }, 400, h);
@@ -213,18 +240,6 @@ export default {
           res.order = await solveOrder(env, day, now);
           res.board = await board(env, day, pid);
         }
-        return json(res, 200, h);
-      }
-
-      if (url.pathname === '/api/free/guess' || url.pathname === '/api/free/giveup') {
-        const rid = String(body.rid || '');
-        if (!/^[0-9a-f]{32}$/.test(rid)) return json({ error: 'rid' }, 400, h);
-        const ans = freeAnswer(rid, salt);
-        if (url.pathname === '/api/free/giveup') return json({ answer: unitOut(ans) }, 200, h);
-        const g = INDEX.get(String(body.id));
-        if (g == null) return json({ error: '없는 시·군' }, 400, h);
-        const res = { ...judge(ans, g), n: N };
-        if (res.correct) res.answer = unitOut(ans);
         return json(res, 200, h);
       }
 
