@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>어디군 — 오늘의 시·군 맞히기</title>
-<meta name="description" content="시청·군청 사이 거리만 보고 오늘의 시·군을 맞히는 하루 한 문제 게임. 제일 빨리 맞힌 사람이 1등.">
-<meta property="og:title" content="어디군 — 오늘의 시·군 맞히기">
-<meta property="og:description" content="거리만 보고 전국 167개 시·군 중 오늘의 정답을 찾아라. 제일 빨리 맞힌 사람이 1등.">
+<title>행선지 — 오늘의 시·군 맞히기</title>
+<meta name="description" content="정답에 가까운 순서로 매긴 점수만 보고 오늘의 시·군을 맞히는 하루 한 문제 게임. 제일 빨리 맞힌 사람이 1등.">
+<meta property="og:title" content="행선지 — 오늘의 시·군 맞히기">
+<meta property="og:description" content="가까운 순서 점수만 보고 전국 165개 시·군 중 오늘의 정답을 찾아라. 제일 빨리 맞힌 사람이 1등.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📍</text></svg>">
 <style>
@@ -108,7 +108,7 @@ h1 .no{font-size:.45em;font-weight:700;color:var(--faint);letter-spacing:0}
 .last{margin-top:10px;padding:14px 16px;border-radius:12px;background:var(--bg);display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline}
 .last .nm{font-size:22px;font-weight:800;letter-spacing:-.03em}
 .last .nm small{font-size:13px;font-weight:600;color:var(--faint);margin-left:6px}
-.last .km{font-size:22px;font-weight:800;text-align:right}
+.last .score{font-size:22px;font-weight:800;text-align:right}
 .last .word{font-size:13px;font-weight:700}
 .last .rk{font-size:13px;color:var(--dim);text-align:right}
 .last .bar{grid-column:1/-1;margin-top:8px}
@@ -136,7 +136,7 @@ th{font-size:11.5px;font-weight:600;color:var(--faint);text-align:left;padding:4
 td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
 tr:last-child td{border-bottom:0}
 td.n{color:var(--faint);width:2.5em;font-size:12.5px}
-td.km{text-align:right;white-space:nowrap;width:5.5em}
+td.score{text-align:right;white-space:nowrap;width:5.5em}
 td.rk{width:38%}
 td.rk .t{display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint);margin-bottom:3px}
 td .s{font-size:11.5px;color:var(--faint);margin-left:5px}
@@ -174,8 +174,8 @@ dialog::backdrop{background:rgba(20,15,8,.45)}
   <header>
     <div>
       <a class="back" href="https://41ways.github.io/norara/">← 레드버튼</a>
-      <h1>어디군 <span class="no" id="no"></span></h1>
-      <p class="sub">시청·군청 사이 거리만 보고 오늘의 시·군을 맞히세요.</p>
+      <h1>행선지 <span class="no" id="no"></span></h1>
+      <p class="sub">시청·군청이 정답에 가까운 순서로 매긴 점수만 보고 오늘의 시·군을 맞히세요.</p>
     </div>
     <div class="hud">
       <div class="clock num" id="clock">0:00</div>
@@ -210,10 +210,10 @@ dialog::backdrop{background:rgba(20,15,8,.45)}
     <section class="card listbox">
       <div class="listhead"><span id="count">부른 곳 0</span><span>가까운 순</span></div>
       <table id="tbl" hidden>
-        <thead><tr><th>#</th><th>시·군</th><th style="text-align:right">거리</th><th>가까운 순서</th></tr></thead>
+        <thead><tr><th>#</th><th>시·군</th><th style="text-align:right">점수</th><th>가까운 순서</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
-      <div class="empty" id="empty">아무 데나 하나 불러 보세요.<br>거리를 보고 좁혀 가면 됩니다.</div>
+      <div class="empty" id="empty">아무 데나 하나 불러 보세요.<br>점수를 보고 좁혀 가면 됩니다.</div>
       <div class="tools">
         <button class="btn" id="btnBoard">오늘 순위</button>
         <button class="btn" id="btnHelp">규칙</button>
@@ -232,13 +232,15 @@ dialog::backdrop{background:rgba(20,15,8,.45)}
   <div class="dh"><h3>규칙</h3><button class="x" data-close aria-label="닫기">×</button></div>
   <div class="db">
     <ul>
-      <li>매일 자정(한국 시간)에 전국 <b>시·군 167곳</b> 중 하나가 정답이 됩니다.</li>
-      <li>한 곳을 부르면 그곳 <b>시청·군청에서 정답 청사까지의 직선거리</b>와, 167곳 중 정답에 <b>몇 번째로 가까운지</b>를 알려 줍니다.</li>
+      <li>매일 자정(한국 시간)에 전국 <b>시·군 165곳</b> 중 하나가 정답이 됩니다.</li>
+      <li>한 곳을 부르면 그곳 시청·군청이 <b>정답 청사에서 몇 번째로 가까운지</b>와, 그 순서로 매긴 <b>100점 만점 점수</b>를 알려 줍니다.</li>
+      <li>점수는 정답이 <b>100.00점</b>, 그 밖은 <b>한 계단마다 0.60점</b>씩 낮아집니다 — 2번째로 가까우면 98.80점, 10번째면 94.00점.</li>
+      <li>거리(km)는 알려 주지 않습니다. 거리를 알면 원 세 개를 그려 교차점으로 정답을 특정할 수 있어서, <b>순서만</b> 알려 줍니다.</li>
       <li>시계는 <b>첫 추측부터</b> 정답까지 서버가 잽니다. 순위는 빠른 순, 시간이 같으면 적게 부른 순입니다. 포기하면 순위에 오르지 않습니다.</li>
       <li>특별·광역시와 세종은 구 없이 <b>한 칸</b>입니다 — 서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종.</li>
       <li><b>광주</b>는 옛 광주광역시 지역(지금은 전남광주통합특별시)입니다. 경기 광주시와 다릅니다.</li>
       <li><b>고성군</b>은 강원과 경남에 둘 다 있습니다.</li>
-      <li>옹진군청은 섬이 아니라 <b>인천 시내</b>(미추홀구)에 있습니다.</li>
+      <li><b>울릉군</b>(독도 포함)과 <b>옹진군</b>은 빠졌습니다 — 울릉군은 뭍에서 가장 가까운 울진군까지 144km라 가까운 순서가 뜻을 잃고, 옹진군은 군청이 관할 밖 인천 시내에 있어 순위와 지도가 어긋납니다.</li>
       <li>초성으로도 찾을 수 있습니다 — <b>ㅊㅊ</b> → 춘천시.</li>
     </ul>
   </div>
@@ -253,7 +255,7 @@ dialog::backdrop{background:rgba(20,15,8,.45)}
 (function(){
 'use strict';
 var API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://localhost:8832' : 'https://eodigun.41ways.workers.dev';
-var SHARE_URL = 'https://41ways.github.io/eodigun/';
+var SHARE_URL = 'https://41ways.github.io/wheretogo/';
 
 function $(s){ return document.querySelector(s); }
 function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
@@ -287,7 +289,7 @@ var M = null;            // map.json
 var U = [];              // 칸들
 var BY = {};             // id → 칸 번호
 var S = {
-  day:null, no:null, n:167, offset:0,
+  day:null, no:null, n:165, offset:0,
   started:null, list:[], solved:false, gaveup:false, elapsed:null, answer:null, order:null,
   busy:false, lastId:null
 };
@@ -313,6 +315,7 @@ function word(rank){
   if (rank <= 120) return '멂';
   return '아주 멂';
 }
+function pts(v){ return (v == null ? 0 : v).toFixed(2) + '점'; }
 function closeness(rank){ return rank <= 0 ? 100 : Math.max(3, Math.round((1 - (rank - 1) / (S.n - 2)) * 100)); }
 
 // ══════════════════════════════ 시간
@@ -363,7 +366,7 @@ function buildMap(){
     if (!p) { tip.hidden = true; return; }
     var u = U[+p.dataset.i], g = guessOf(u.id);
     var r = wrap.getBoundingClientRect();
-    tip.textContent = g ? (u.name + ' · ' + g.km + 'km · ' + (g.rank ? g.rank + '번째' : '정답')) : u.name;
+    tip.textContent = g ? (u.name + ' · ' + pts(g.score) + ' · ' + (g.rank ? g.rank + '번째' : '정답')) : u.name;
     tip.style.left = (e.clientX - r.left) + 'px';
     tip.style.top = (e.clientY - r.top) + 'px';
     tip.hidden = false;
@@ -433,7 +436,7 @@ function renderSug(){
     var u = U[i], was = guessOf(u.id);
     return '<li role="option" data-i="' + i + '" aria-selected="' + (k === sugSel) + '">' +
       '<span>' + esc(u.name) + '</span><span class="s">' + esc(u.sub) + '</span>' +
-      (was ? '<span class="was">' + was.km + 'km</span>' : '') + '</li>';
+      (was ? '<span class="was">' + pts(was.score) + '</span>' : '') + '</li>';
   }).join('');
   box.hidden = false;
 }
@@ -460,7 +463,7 @@ function guess(i){
   var old = guessOf(u.id);
   $('#q').value = ''; $('#sug').hidden = true;
   if (old) {
-    msg(u.name + '은(는) 이미 불렀습니다 — ' + old.km + 'km');
+    msg(u.name + '은(는) 이미 불렀습니다 — ' + pts(old.score));
     var tr = document.querySelector('tr[data-id="' + u.id + '"]');
     if (tr) { tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash'); tr.scrollIntoView({block:'nearest'}); }
     return;
@@ -470,7 +473,7 @@ function guess(i){
     S.busy = false;
     if (r.closed) { return load(); }
     if (!S.started) S.started = now();
-    S.list.push({ id:r.id, km:r.km, rank:r.rank, correct:r.correct, no:S.list.length + 1 });
+    S.list.push({ id:r.id, score:r.score, rank:r.rank, correct:r.correct, no:S.list.length + 1 });
     S.lastId = r.id;
     if (r.correct) {
       S.solved = true; S.elapsed = r.elapsed; S.answer = r.answer; S.order = r.order; S.board = r.board;
@@ -507,7 +510,7 @@ function render(){
     var u = U[BY[g.id]];
     last.innerHTML =
       '<div class="nm">' + esc(u.name) + '<small>' + esc(u.sub) + '</small></div>' +
-      '<div class="km num">' + g.km + '<small style="font-size:14px;font-weight:600"> km</small></div>' +
+      '<div class="score num">' + (g.score == null ? 0 : g.score).toFixed(2) + '<small style="font-size:14px;font-weight:600"> 점</small></div>' +
       '<div class="word" style="color:' + heat(g.rank) + '">' + word(g.rank) + '</div>' +
       '<div class="rk num">' + (S.n - 1) + '곳 중 ' + g.rank + '번째로 가까움</div>' +
       '<div class="bar"><i style="width:' + closeness(g.rank) + '%;background:' + heat(g.rank) + '"></i></div>';
@@ -523,7 +526,7 @@ function render(){
     return '<tr data-id="' + g.id + '"' + (g.id === S.lastId && !g.correct ? ' class="new"' : '') + '>' +
       '<td class="n num">' + g.no + '</td>' +
       '<td>' + (g.correct ? '📍 ' : '') + '<b>' + esc(u.name) + '</b><span class="s">' + esc(u.sub) + '</span></td>' +
-      '<td class="km num">' + (g.correct ? '정답' : g.km + 'km') + '</td>' +
+      '<td class="score num">' + (g.correct ? '정답' : pts(g.score)) + '</td>' +
       '<td class="rk"><div class="t"><span>' + word(g.rank) + '</span><span class="num">' + (g.rank ? g.rank + '번째' : '') + '</span></div>' +
       '<div class="bar"><i style="width:' + closeness(g.rank) + '%;background:' + (g.correct ? 'var(--ink)' : heat(g.rank)) + '"></i></div></td></tr>';
   }).join('');
@@ -581,7 +584,7 @@ function share(){
   var sq = S.list.map(function(g){ return g.correct ? '📍' : g.rank <= 5 ? '🟥' : g.rank <= 20 ? '🟧' : g.rank <= 50 ? '🟨' : '🟦'; });
   if (sq.length > 24) sq = sq.slice(0, 11).concat(['…']).concat(sq.slice(-12));
   var mine = S.board && S.board.mine;
-  var t = '어디군 #' + S.no + ' — ' + fmtKo(S.elapsed) + ', ' + S.list.length + '번 만에' + (mine ? ' (' + mine.rank + '위)' : '') + '\n' + sq.join('') + '\n' + SHARE_URL;
+  var t = '행선지 #' + S.no + ' — ' + fmtKo(S.elapsed) + ', ' + S.list.length + '번 만에' + (mine ? ' (' + mine.rank + '위)' : '') + '\n' + sq.join('') + '\n' + SHARE_URL;
   var done = function(){ var b = $('#share'); if (b) { b.textContent = '복사됨 ✓'; setTimeout(function(){ if ($('#share')) $('#share').textContent = '결과 복사'; }, 1500); } };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function(){ prompt('복사해서 붙여 넣으세요', t); });
   else prompt('복사해서 붙여 넣으세요', t);
@@ -622,7 +625,7 @@ function load(){
     var m = r.mine;
     if (m) {
       S.started = m.started; S.elapsed = m.elapsed; S.solved = m.solved; S.gaveup = m.gaveup; S.answer = m.answer;
-      S.list = m.list.map(function(g, i){ return { id:g.id, km:g.km, rank:g.rank, correct:g.correct, no:i + 1 }; });
+      S.list = m.list.map(function(g, i){ return { id:g.id, score:g.score, rank:g.rank, correct:g.correct, no:i + 1 }; });
       S.lastId = S.list.length ? S.list[S.list.length - 1].id : null;
       if (S.solved) api('/api/top?day=' + S.day + '&me=' + PID).then(function(b){ S.board = b; renderDone(); });
     }

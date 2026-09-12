@@ -1,4 +1,4 @@
-/* 어디군 — 정답 고르기와 거리 계산. 서버와 테스트가 같이 쓴다 */
+/* 행선지 — 정답 고르기와 거리·점수 계산. 서버와 테스트가 같이 쓴다 */
 import UNITS from '../../data/units.json' with { type: 'json' };
 
 export { UNITS };
@@ -30,7 +30,7 @@ function mulberry32(a) {
   };
 }
 
-/* 167일에 한 바퀴. 한 바퀴 안에서는 같은 칸이 두 번 나오지 않는다 */
+/* 165일에 한 바퀴. 한 바퀴 안에서는 같은 칸이 두 번 나오지 않는다 */
 const orders = new Map();
 export function answerIndex(day, salt) {
   const k = day - EPOCH;
@@ -72,6 +72,15 @@ export function ranks(ans) {
   return r;
 }
 
+/* 점수 — 정답이 100점, 그 밖은 가까운 순서 한 계단마다 0.6점씩 낮아진다. 소수 둘째 자리까지.
+   거리를 수치로 주면 원 세 개로 정답이 특정된다 (삼변측량). 점수가 순서만 담으면
+   역산해도 이미 알려 준 순위밖에 안 나오고, 반지름이 없으니 원을 그릴 수 없다 */
+const STEP = 0.6;
+export function score(ans, guess) {
+  const r = ranks(ans)[guess];
+  return r === 0 ? 100 : Math.round((100 - r * STEP) * 100) / 100;
+}
+
 export function judge(ans, guess) {
-  return { id: UNITS[guess].id, km: Math.round(km(ans, guess) * 10) / 10, rank: ranks(ans)[guess], correct: ans === guess };
+  return { id: UNITS[guess].id, score: score(ans, guess), rank: ranks(ans)[guess], correct: ans === guess };
 }

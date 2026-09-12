@@ -1,13 +1,13 @@
 /* ══════════════════════════════════════════════════════════════════
-   어디군 — 정답·거리·순위 서버
+   행선지 — 정답·점수·순위 서버
 
    GET  /api/today?me=<pid>        오늘 문제 번호, 푼 사람 수, 어제 정답, 내 기록
    GET  /api/top?day=&me=<pid>     그날 순위 (위 20명 + 내 자리)
-   POST /api/guess                 { day, pid, id, name }  → 거리·순위 (맞히면 기록)
+   POST /api/guess                 { day, pid, id, name }  → 점수·순위 (맞히면 기록)
    POST /api/giveup                { day, pid }            → 정답 공개, 순위에서 빠짐
    POST /api/name                  { day, pid, name }      → 순위표 이름 바꾸기
 
-   정답은 여기서만 안다. 브라우저에는 거리와 "가까운 순서"만 돌려준다.
+   정답은 여기서만 안다. 브라우저에 거리는 아예 안 나간다 — "가까운 순서"와 그걸로 매긴 점수뿐.
    시간도 서버가 잰다 — 그날 첫 추측을 받은 순간부터 정답을 받은 순간까지.
    ══════════════════════════════════════════════════════════════════ */
 import { UNITS, N, INDEX, kstDay, puzzleNo, answerIndex, judge } from './game.js';
@@ -158,7 +158,7 @@ export default {
         ).bind(day, pid, name, now, UNITS[g].id).first();
 
         const res = { ...judge(ans, g), n: N };
-        if (!row) return json({ ...res, closed: true }, 200, h);   // 이미 끝난 판 — 거리만 알려 준다
+        if (!row) return json({ ...res, closed: true }, 200, h);   // 이미 끝난 판 — 점수만 알려 준다
         res.guesses = row.guesses;
 
         if (res.correct) {

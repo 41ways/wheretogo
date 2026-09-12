@@ -1,4 +1,4 @@
--- 어디군 하루 기록. 한 사람(pid)은 하루에 한 줄.
+-- 행선지 하루 기록. 한 사람(pid)은 하루에 한 줄.
 -- 시계는 서버가 잰다: 그날 첫 추측을 받은 순간(started)부터 정답을 받은 순간(solved_at)까지.
 CREATE TABLE IF NOT EXISTS plays (
   day       INTEGER NOT NULL,   -- 한국 날짜 번호 (KST 기준 1970-01-01 부터 며칠)

@@ -10,10 +10,10 @@ full = {f['properties']['u']: f['geometry'] for f in json.load(open('raw/units-f
 def polys(g):
     return g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
 
-# 독도는 섬 거르기에서 빠지므로 원본에서 도로 붙인다 (울릉군)
-ull = next(u['id'] for u in units if u['name'] == '울릉군')
-dokdo = [p for p in polys(full[ull]) if p[0][0][0] > 131.5]
-simple[ull] = {'type': 'MultiPolygon', 'coordinates': polys(simple[ull]) + dokdo}
+# 뺀 칸. 울릉군(독도 포함)은 뭍에서 제일 가까운 울진군까지 144km 라 "가까운 순서"가 뜻을 잃고,
+# 옹진군은 군청이 관할 밖(인천 미추홀구)에 있어 순위와 지도가 어긋난다
+DROP = {'울릉군', '옹진군'}
+units = [u for u in units if u['name'] not in DROP]
 
 # 투영: 위도 36° 기준 등장방형. 한반도 남쪽 폭에서는 충분히 반듯하다
 LAT0, K = 36.0, 150.0
