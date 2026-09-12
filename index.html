@@ -223,6 +223,11 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
 .x{border:0;background:none;font-size:22px;line-height:1;color:var(--faint);padding:2px 6px}
 .x:hover{color:var(--accent)}
 .db{padding:4px 16px 16px;overflow:auto}
+.tabs{display:flex;gap:18px;padding:2px 16px 0;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;padding:6px 0 9px;font-size:13px;font-weight:600;letter-spacing:.06em;
+  color:var(--faint);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--ink)}
 .db ul{margin:0;padding-left:1.1em;font-size:14px;color:var(--dim)}
 .db li{margin:0 0 7px}
 .db b{color:var(--ink)}
@@ -346,7 +351,11 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
 </dialog>
 
 <dialog id="dlgBoard">
-  <div class="dh"><h3 id="boardTitle">오늘 순위</h3><button class="x" data-close aria-label="닫기">×</button></div>
+  <div class="dh"><h3 id="boardTitle">순위</h3><button class="x" data-close aria-label="닫기">×</button></div>
+  <div class="tabs" role="tablist">
+    <button class="tab on" id="tabToday" role="tab">오늘</button>
+    <button class="tab" id="tabAll" role="tab">전체</button>
+  </div>
   <div class="db" id="boardBody"></div>
 </dialog>
 
@@ -697,7 +706,7 @@ function renderDone(){
   if (ni) ni.onkeydown = function(e){ if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveName(); };
   var sh = $('#share');
   if (sh) sh.onclick = share;
-  $('#seeBoard').onclick = openBoard;
+  $('#seeBoard').onclick = function(){ openBoard('today'); };
 }
 
 function saveName(){
@@ -722,6 +731,23 @@ function share(){
 }
 
 // ══════════════════════════════ 순위표
+function allHtml(b){
+  if (!b.rows.length) return '<p style="color:var(--faint);font-size:14px;margin:6px 0 10px">아직 쌓인 기록이 없습니다.</p>';
+  var row = function(r, cls){
+    return '<tr' + (cls || (r.me ? ' class="me"' : '')) + '><td class="rk1 num">' + r.rank + '</td><td>' + esc(r.name) + '</td>' +
+      '<td class="g num">' + r.days + '일</td><td class="t num">' + fmt(r.avg, true) + '</td></tr>';
+  };
+  var h = '<table class="board"><thead><tr><th></th><th>이름</th><th style="text-align:right">맞힌 날</th><th style="text-align:right">평균</th></tr></thead><tbody>';
+  b.rows.forEach(function(r){ h += row(r); });
+  if (b.mine && !b.rows.some(function(r){ return r.me; })) {
+    h += '<tr class="gap"><td colspan="4">⋯</td></tr>' + row(b.mine, ' class="me"');
+  }
+  h += '</tbody></table><p style="color:var(--faint);font-size:12px;margin:10px 0 0;line-height:1.7">' +
+    '여태 ' + b.people + '명이 ' + b.plays + '판을 맞혔습니다 · 맞힌 날이 많은 순, 같으면 평균이 빠른 순<br>' +
+    '기록은 이 브라우저에 붙습니다 — 다른 기기에서 하면 다른 사람으로 셉니다.</p>';
+  return h;
+}
+
 function boardHtml(b){
   if (!b.rows.length) return '<p style="color:var(--faint);font-size:14px;margin:6px 0 10px">아직 맞힌 사람이 없습니다. 첫 번째가 되어 보세요.</p>';
   var h = '<table class="board"><tbody>';
@@ -737,13 +763,16 @@ function boardHtml(b){
   h += '</tbody></table><p style="color:var(--faint);font-size:12px;margin:10px 0 0">맞힌 사람 ' + b.count + '명 · 첫 추측부터 정답까지 걸린 시간</p>';
   return h;
 }
-function openBoard(){
-  var d = $('#dlgBoard');
-  $('#boardTitle').textContent = '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
+function openBoard(which){
+  var tab = which || 'today', d = $('#dlgBoard');
+  $('#tabToday').className = 'tab' + (tab === 'today' ? ' on' : '');
+  $('#tabAll').className = 'tab' + (tab === 'all' ? ' on' : '');
+  $('#boardTitle').textContent = tab === 'all' ? '전체 순위' : '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
   $('#boardBody').innerHTML = '<p style="color:var(--faint)">불러오는 중…</p>';
   if (!d.open) d.showModal();
   if (S.day == null) { $('#boardBody').innerHTML = '<p>서버에 연결하지 못했습니다.</p>'; return; }
-  api('/api/top?day=' + S.day + '&me=' + PID).then(function(b){ $('#boardBody').innerHTML = boardHtml(b); })
+  var call = tab === 'all' ? api('/api/all?me=' + PID) : api('/api/top?day=' + S.day + '&me=' + PID);
+  call.then(function(b){ $('#boardBody').innerHTML = tab === 'all' ? allHtml(b) : boardHtml(b); })
     .catch(function(e){ $('#boardBody').innerHTML = '<p>못 불러왔습니다: ' + esc(e.message) + '</p>'; });
 }
 
@@ -938,11 +967,13 @@ $('#btnStart').addEventListener('click', function(){ (S.solved || S.gaveup) ? op
 /* 결과 창을 닫으면 타이틀로 — 게임 화면에 남겨 두지 않는다 */
 $('#dlgDone').addEventListener('close', function(){ if (!S.free && (S.solved || S.gaveup) && $('#title').hidden) backToTitle(); });
 $('#btnFree').addEventListener('click', startFree);
+$('#tabToday').addEventListener('click', function(){ openBoard('today'); });
+$('#tabAll').addEventListener('click', function(){ openBoard('all'); });
 $('#btnHelp2').addEventListener('click', function(){ $('#dlgHelp').showModal(); });
-$('#btnBoard2').addEventListener('click', openBoard);
+$('#btnBoard2').addEventListener('click', function(){ openBoard('today'); });
 $('#btnGiveup').addEventListener('click', giveup);
 $('#btnHelp').addEventListener('click', function(){ $('#dlgHelp').showModal(); });
-$('#btnBoard').addEventListener('click', openBoard);
+$('#btnBoard').addEventListener('click', function(){ openBoard('today'); });
 document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', function(){ b.closest('dialog').close(); }); });
 document.querySelectorAll('dialog').forEach(function(d){ d.addEventListener('click', function(e){ if (e.target === d) d.close(); }); });
 })();

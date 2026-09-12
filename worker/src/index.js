@@ -3,6 +3,7 @@
 
    GET  /api/today?me=<pid>        오늘 문제 번호, 푼 사람 수, 어제 정답, 내 기록
    GET  /api/top?day=&me=<pid>     그날 순위 (위 20명 + 내 자리)
+   GET  /api/all?me=<pid>          전체 순위 — 맞힌 날 수 순, 같으면 평균이 빠른 순
    POST /api/guess                 { day, pid, id, name }  → 점수·순위 (맞히면 기록)
    POST /api/giveup                { day, pid }            → 정답 공개, 순위에서 빠짐
    POST /api/name                  { day, pid, name }      → 순위표 이름 바꾸기
@@ -125,6 +126,37 @@ export default {
           yesterday: y,
           mine: pidOk(me) ? await myState(env, day, me, answerIndex(day, salt)) : null,
         }, 200, h);
+      }
+
+      /* 전체 순위 — 날마다 지워지는 그날 순위와 달리 쌓인 판을 사람(pid)별로 묶는다.
+         맞힌 날이 많은 사람이 위, 같으면 평균이 빠른 사람이 위 */
+      if (url.pathname === '/api/all' && req.method === 'GET') {
+        const me = url.searchParams.get('me');
+        const [top, tot] = await env.DB.batch([
+          env.DB.prepare(
+            'SELECT p.pid AS pid, COUNT(*) AS days, AVG(p.elapsed) AS avg, MIN(p.elapsed) AS best, ' +
+            '(SELECT x.name FROM plays x WHERE x.pid = p.pid AND x.solved_at IS NOT NULL ORDER BY x.day DESC LIMIT 1) AS name ' +
+            'FROM plays p WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL ' +
+            `GROUP BY p.pid ORDER BY days DESC, avg ASC LIMIT ${TOP_N}`),
+          env.DB.prepare('SELECT COUNT(DISTINCT pid) AS people, COUNT(*) AS plays FROM plays WHERE gaveup = 0 AND solved_at IS NOT NULL'),
+        ]);
+        const out = r => ({ name: r.name || '이름없음', days: r.days, avg: Math.round(r.avg), best: r.best });
+        const rows = top.results.map((r, i) => ({ rank: i + 1, ...out(r), me: !!(me && r.pid === me) }));
+        let mine = rows.find(r => r.me) || null;
+        if (!mine && pidOk(me)) {
+          const r = await env.DB.prepare(
+            'SELECT COUNT(*) AS days, AVG(elapsed) AS avg, MIN(elapsed) AS best, ' +
+            '(SELECT x.name FROM plays x WHERE x.pid = ?1 AND x.solved_at IS NOT NULL ORDER BY x.day DESC LIMIT 1) AS name ' +
+            'FROM plays WHERE pid = ?1 AND gaveup = 0 AND solved_at IS NOT NULL').bind(me).first();
+          if (r && r.days > 0) {
+            const a = await env.DB.prepare(
+              'SELECT COUNT(*) AS c FROM (SELECT pid, COUNT(*) AS d, AVG(elapsed) AS a FROM plays ' +
+              'WHERE gaveup = 0 AND solved_at IS NOT NULL GROUP BY pid) WHERE d > ?1 OR (d = ?1 AND a < ?2)'
+            ).bind(r.days, r.avg).first();
+            mine = { rank: (a ? a.c : 0) + 1, ...out(r), me: true };
+          }
+        }
+        return json({ rows, mine, people: tot.results[0].people, plays: tot.results[0].plays }, 200, h);
       }
 
       /* 무한 연습 — 기록을 남기지 않으므로 하루 한 판 제한과 무관하다 */
