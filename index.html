@@ -106,6 +106,11 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
   padding-bottom:12px;border-bottom:5px solid var(--accent);margin-bottom:18px}
 .back{display:inline-block;font-size:12.5px;color:var(--faint);text-decoration:none;margin-bottom:6px}
 .back:hover{color:var(--accent)}
+.toplinks{display:flex;gap:14px;align-items:baseline}
+.home{border:0;background:none;padding:0;font:inherit;font-size:12.5px;color:var(--faint);margin-bottom:6px;cursor:pointer}
+.home:hover{color:var(--accent)}
+#toTitle{cursor:pointer}
+#toTitle:hover .ttl{color:var(--accent)}
 h1{margin:0;font-family:var(--display);font-size:clamp(28px,5.6vw,38px);font-weight:400;letter-spacing:-.01em;line-height:1.1;display:flex;align-items:baseline;gap:10px}
 h1 .no{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--faint);letter-spacing:.02em}
 .sub{margin:7px 0 0;color:var(--dim);font-size:13.5px;letter-spacing:.01em}
@@ -287,8 +292,11 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
   <div id="game" hidden>
   <header>
     <div>
-      <a class="back" href="https://41ways.github.io/norara/">← 레드버튼</a>
-      <h1>행선지 <span class="no" id="no"></span></h1>
+      <div class="toplinks">
+        <a class="back" href="https://41ways.github.io/norara/">← 레드버튼</a>
+        <button class="home" id="btnHome" type="button">⌂ 처음으로</button>
+      </div>
+      <h1 id="toTitle" title="처음으로"><span class="ttl">행선지</span> <span class="no" id="no"></span></h1>
       <p class="sub">가까운 순서만 보고 오늘의 시·군을 맞히세요.</p>
     </div>
     <div class="hud">
@@ -951,6 +959,20 @@ function backToTitle(){
   titleFinished();
   scrollTo(0, 0);
 }
+/* 게임 화면에서 타이틀로 — 처음으로 단추와 제목 누르기.
+   연습 판(이지·무한)은 접고 오늘 판을 되돌린다. 오늘 판은 그대로 두니 이어서 할 수 있다
+   (시계는 서버가 첫 추측부터 재므로 타이틀에 있는 동안에도 흐른다) */
+function goTitle(){
+  if (S.busy) return;
+  if (S.free) { endFree(); return; }
+  var d = $('#dlgDone'); if (d.open) d.close();
+  if (!$('#title').hidden) return;
+  $('#game').hidden = true; $('#title').hidden = false;
+  if (S.solved || S.gaveup) titleFinished();
+  else { $('#btnStart').disabled = false; $('#btnStart').textContent = S.list.length ? '이어서 하기' : '시작'; }
+  renderFreeStat();
+  scrollTo(0, 0);
+}
 /* 타이틀을 "오늘은 끝" 상태로 */
 function titleFinished(){
   var b = $('#btnStart');
@@ -1083,6 +1105,8 @@ $('#tabBest').addEventListener('click', function(){ openBoard('best'); });
 $('#btnHelp2').addEventListener('click', function(){ $('#dlgHelp').showModal(); });
 $('#btnBoard2').addEventListener('click', function(){ openBoard('today'); });
 $('#btnGiveup').addEventListener('click', giveup);
+$('#btnHome').addEventListener('click', goTitle);
+$('#toTitle').addEventListener('click', goTitle);
 $('#btnHelp').addEventListener('click', function(){ $('#dlgHelp').showModal(); });
 $('#btnBoard').addEventListener('click', function(){ openBoard('today'); });
 document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', function(){ b.closest('dialog').close(); }); });
