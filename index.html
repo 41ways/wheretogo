@@ -319,7 +319,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
     <section class="card ask">
       <div id="askform">
         <form class="field" id="askf" autocomplete="off">
-          <input id="q" type="text" placeholder="시·군 이름 (수원, 제주, ㅊㅊ …)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-autocomplete="list" aria-controls="sug" disabled>
+          <input id="q" type="text" placeholder="시·군 이름 (수원, 경기, ㅊㅊ …)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-autocomplete="list" aria-controls="sug" disabled>
           <button class="go" id="go" type="submit" disabled>부르기</button>
           <ul class="sug" id="sug" role="listbox" hidden></ul>
         </form>
@@ -372,6 +372,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
       <li><b>고성군</b>은 강원과 경남에 둘 다 있습니다.</li>
       <li><b>울릉군</b>(독도 포함)과 <b>옹진군</b>은 빠졌습니다 — 울릉군은 뭍에서 가장 가까운 울진군까지 144km라 가까운 순서가 뜻을 잃고, 옹진군은 군청이 관할 밖 인천 시내에 있어 순위와 지도가 어긋납니다.</li>
       <li>초성으로도 찾을 수 있습니다 — <b>ㅊㅊ</b> → 춘천시.</li>
+      <li>도 이름을 치면 그 도의 시·군이 모두 나옵니다 — <b>경기</b>, <b>충청북도</b>, <b>전라도</b>, <b>제주</b>. 권역도 됩니다 — <b>수도권</b>, <b>충청</b>, <b>호남</b>, <b>영남</b>.</li>
     </ul>
   </div>
 </dialog>
@@ -596,7 +597,36 @@ function cho(s){
     return k >= 0 && k < 11172 ? CHO[Math.floor(k / 588)] : c;
   }).join('');
 }
+/* 도·권역 이름을 끝까지 치면 그 안의 시·군을 전부 가나다순으로 보여 준다 — 경기 → 31곳.
+   칸의 sido(도 약칭)나 특별·광역시 id 로 묶는다. 시·군 이름과 똑같은 말(광주, 부산)은 시·군으로 찾는다 */
+var GROUPS = (function(){
+  var g = {
+    '경기':['경기'], '강원':['강원'], '충북':['충북'], '충남':['충남'], '전북':['전북'], '전남':['전남광주'],
+    '경북':['경북'], '경남':['경남'], '제주':['제주'],
+    '충청':['충북', '충남', 'daejeon', 'sejong'],
+    '호남':['전북', '전남광주'],
+    '영남':['경북', '경남', 'busan', '부산', 'daegu', '대구', 'ulsan', '울산'],
+    '수도권':['seoul', 'incheon', '인천', '경기']
+  };
+  g['경기도'] = g['경기']; g['강원도'] = g['강원특별자치도'] = g['강원'];
+  g['충청북도'] = g['충북']; g['충청남도'] = g['충남']; g['충청도'] = g['충청'];
+  g['전라북도'] = g['전북특별자치도'] = g['전북']; g['전라남도'] = g['전남광주'] = g['전남광주통합특별시'] = g['전남'];
+  g['전라'] = g['전라도'] = g['호남'];
+  g['경상북도'] = g['경북']; g['경상남도'] = g['경남']; g['경상'] = g['경상도'] = g['영남'];
+  g['제주도'] = g['제주특별자치도'] = g['제주'];
+  return g;
+})();
+function regionQuery(q){
+  q = String(q).replace(/\s+/g, '');
+  var grp = GROUPS[q];
+  if (!grp || U.some(function(u){ return u.name === q; })) return null;
+  return U.map(function(u, i){ return i; })
+    .filter(function(i){ return grp.indexOf(U[i].sido) >= 0 || grp.indexOf(U[i].id) >= 0; })
+    .sort(function(a, b){ return U[a].name < U[b].name ? -1 : 1; });
+}
 function search(q){
+  var rg = regionQuery(q);
+  if (rg) return rg;
   q = q.replace(/\s+/g, '');
   if (!q) return [];
   var onlyCho = /^[ㄱ-ㅎ]+$/.test(q), out = [];
@@ -617,10 +647,10 @@ function search(q){
   return out.slice(0, 8).map(function(x){ return x[2]; });
 }
 
-var sugIdx = [], sugSel = 0;
+var sugIdx = [], sugSel = 0, sugMoved = false;   // sugMoved: 방향키로 골랐나
 function renderSug(){
   var q = $('#q').value, box = $('#sug');
-  sugIdx = search(q); sugSel = 0;
+  sugIdx = search(q); sugSel = 0; sugMoved = false;
   if (!sugIdx.length || S.solved || S.gaveup) { box.hidden = true; return; }
   box.innerHTML = sugIdx.map(function(i, k){
     var u = U[i], was = guessOf(u.id);
@@ -633,13 +663,17 @@ function renderSug(){
 function moveSug(d){
   if (!sugIdx.length) return;
   sugSel = (sugSel + d + sugIdx.length) % sugIdx.length;
+  sugMoved = true;
   Array.prototype.forEach.call($('#sug').children, function(li, k){ li.setAttribute('aria-selected', k === sugSel); });
+  var on = $('#sug').children[sugSel]; if (on) on.scrollIntoView({ block:'nearest' });   // 긴 목록에서 고른 줄이 안 보이지 않게
 }
 function submit(){
   var q = $('#q').value.trim();
   if (!q) return;
   if (!sugIdx.length) sugIdx = search(q);
   if (!sugIdx.length) { msg('"' + q + '" — 그런 시·군은 없습니다', true); return; }
+  /* 도·권역 이름만 친 채 Enter 는 목록 첫 곳을 부르지 않는다 — 골라야 부른다 */
+  if (regionQuery(q) && !sugMoved) { msg(q + ' ' + sugIdx.length + '곳 — 목록에서 골라 누르세요 (방향키로 고르고 Enter)'); renderSug(); return; }
   guess(sugIdx[Math.min(sugSel, sugIdx.length - 1)]);
 }
 
