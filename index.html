@@ -84,6 +84,8 @@ button{cursor:pointer}
 .start.ghost{margin-top:14px;background:none;color:var(--ink);border:1.5px solid var(--ink);
   font-size:14px;font-weight:700;padding:11px 34px;letter-spacing:.3em;text-indent:.3em}
 .start.ghost:hover:enabled{background:var(--ink);color:var(--bg);opacity:1}
+.modes{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.modes .start.ghost{margin-top:0}
 .tfree{margin:10px 0 0;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em;min-height:1.5em}
 
 /* 빵빠레 */
@@ -134,6 +136,11 @@ h1 .no{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--faint)
 .map path.hit{stroke:rgba(60,40,20,.55);cursor:pointer}
 .map path.now{stroke:var(--ink);stroke-width:2px}
 .map path.ans{fill:var(--ink);stroke:var(--ink)}
+/* 이지 모드 — 마우스가 올라간 칸이 살짝 커지며 칠해진다 */
+.map.easy svg{cursor:pointer}
+.map path.hov{pointer-events:none;fill:var(--accent);fill-opacity:.82;stroke:var(--ink);stroke-width:1.6px;
+  transform-box:fill-box;transform-origin:center;transform:scale(1.14);
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.28));transition:transform .12s ease-out}
 .dot{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--ink);border:1.5px solid var(--panel);pointer-events:none}
 .pin{position:absolute;pointer-events:none;transform:translate(-50%,-100%);font-size:22px;line-height:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
 .lab{position:absolute;pointer-events:none;transform:translate(-50%,-150%);font-size:12px;font-weight:700;white-space:nowrap;padding:2px 7px 1px;background:var(--ink);color:var(--bg);font-family:var(--mono);letter-spacing:-.02em}
@@ -142,6 +149,7 @@ h1 .no{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--faint)
 @media (prefers-reduced-motion:reduce){.ring{animation:none;opacity:0}.map path{transition:none}
   .title{animation:none}}
 .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:5px 9px;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));z-index:3}
+.tip small{opacity:.62;margin-left:6px;font-size:11px}
 .legend{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--faint);margin:8px 4px 0}
 .legend i{flex:1;height:6px;background:linear-gradient(90deg,#e0301e,#e96e5a 28%,#f0b6aa 60%,#b9b7b0)}
 .credit{font-size:10.5px;color:var(--faint);margin:6px 4px 0;opacity:.8}
@@ -264,7 +272,10 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
     <p class="terr" id="terr" hidden></p>
     <button class="start" id="btnStart" disabled>시작</button>
     <p class="tfin num" id="tfin" hidden></p>
-    <button class="start ghost" id="btnFree">무한 연습</button>
+    <div class="modes">
+      <button class="start ghost" id="btnEasy">이지 모드</button>
+      <button class="start ghost" id="btnFree">무한 모드</button>
+    </div>
     <p class="tfree" id="tfree"></p>
     <div class="trow">
       <button class="btn" id="btnHelp2">규칙</button>
@@ -345,7 +356,8 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
       <li>한 곳을 부르면 그곳 시청·군청이 <b>정답 청사에서 몇 번째로 가까운지</b>와, 그 순서로 매긴 <b>100점 만점 점수</b>를 알려 줍니다.</li>
       <li>점수는 정답이 <b>100.00점</b>, 그 밖은 <b>한 계단마다 0.60점</b>씩 낮아집니다 — 2번째로 가까우면 98.80점, 10번째면 94.00점.</li>
       <li>거리(km)는 알려 주지 않습니다. 거리를 알면 원 세 개를 그려 교차점으로 정답을 특정할 수 있어서, <b>순서만</b> 알려 줍니다.</li>
-      <li><b>하루 한 판</b>입니다. 맞히거나 포기하면 그날은 끝이고, <b>무한 연습</b>은 언제든 몇 판이든 할 수 있습니다 (순위에 오르지 않습니다).</li>
+      <li><b>하루 한 판</b>입니다. 맞히거나 포기하면 그날은 끝이고, <b>무한 모드</b>는 언제든 몇 판이든 할 수 있습니다 (순위에 오르지 않습니다).</li>
+      <li><b>이지 모드</b>는 오늘 문제와 따로 정답을 뽑아 몇 판이든 합니다. 지도에 마우스를 올리면 그곳이 커지며 이름이 보이고, <b>눌러서 바로 부를 수</b> 있습니다 (손가락은 한 번 눌러 이름을 보고, 한 번 더 눌러 부릅니다). 기록은 남지 않습니다.</li>
       <li>시계는 <b>첫 추측부터</b> 정답까지 서버가 잽니다. 순위는 빠른 순, 시간이 같으면 적게 부른 순입니다. 포기하면 순위에 오르지 않습니다.</li>
       <li>특별·광역시와 세종은 구 없이 <b>한 칸</b>입니다 — 서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종.</li>
       <li><b>광주</b>는 옛 광주광역시 지역(지금은 전남광주통합특별시)입니다. 경기 광주시와 다릅니다.</li>
@@ -407,17 +419,24 @@ var S = {
   day:null, no:null, n:165, offset:0,
   started:null, list:[], solved:false, gaveup:false, elapsed:null, answer:null, order:null,
   busy:false, lastId:null,
-  free:null, daily:null          /* free = 이번 연습 판의 표(rid). daily = 오늘 판을 잠시 넣어 두는 자리 */
+  free:null, daily:null, easy:false   /* free = 이번 연습 판의 표(rid). daily = 오늘 판을 잠시 넣어 두는 자리. easy = 이지 모드 판 */
 };
-function freeStat(add){
-  var v = (lsGet('wheretogo-free') || '').split(',').map(Number);
+/* 판수와 평균 횟수는 이 브라우저에만 적는다. 이지 모드와 무한 모드는 따로 센다 */
+function freeStat(add, easy){
+  var key = easy ? 'wheretogo-easy' : 'wheretogo-free';
+  var v = (lsGet(key) || '').split(',').map(Number);
   var n = v[0] > 0 ? v[0] : 0, sum = v[1] > 0 ? v[1] : 0;
-  if (add) { n += 1; sum += add; lsSet('wheretogo-free', n + ',' + sum); }
+  if (add) { n += 1; sum += add; lsSet(key, n + ',' + sum); }
   return { n:n, avg: n ? sum / n : 0 };
 }
 function renderFreeStat(){
-  var f = freeStat(0);
-  $('#tfree').textContent = f.n ? '무한 연습 ' + f.n + '판 · 평균 ' + (Math.round(f.avg * 10) / 10) + '번' : '';
+  var line = function(label, f){ return f.n ? label + ' ' + f.n + '판 · 평균 ' + (Math.round(f.avg * 10) / 10) + '번' : ''; };
+  $('#tfree').textContent = [line('이지 모드', freeStat(0, true)), line('무한 모드', freeStat(0))].filter(Boolean).join('  /  ');
+}
+function easyOn(){ return !!(S.free && S.easy && !S.solved && !S.gaveup); }
+function easyHint(){
+  return matchMedia('(hover:hover)').matches ? '지도에 마우스를 올려 보고, 눌러서 부르세요. 이름을 적어도 됩니다.'
+                                             : '지도를 누르면 이름이 보이고, 한 번 더 누르면 부릅니다.';
 }
 
 // ══════════════════════════════ 색
@@ -488,20 +507,55 @@ function buildMap(){
   });
   svg.appendChild(frag);
 
-  var tip = $('#tip'), wrap = $('#mapwrap');
-  function show(e){
-    var p = e.target.closest && e.target.closest('path.hit');
-    if (!p) { tip.hidden = true; return; }
-    var u = U[+p.dataset.i], g = guessOf(u.id);
+  var tip = $('#tip'), wrap = $('#mapwrap'), touch = false, armed = null;
+  function place(e){
     var r = wrap.getBoundingClientRect();
-    tip.textContent = g ? (u.name + ' · ' + pts(g.score) + ' · ' + (g.rank ? g.rank + '번째' : '정답')) : u.name;
     tip.style.left = (e.clientX - r.left) + 'px';
     tip.style.top = (e.clientY - r.top) + 'px';
     tip.hidden = false;
   }
+  function show(e){
+    var p = e.target.closest && e.target.closest('path');
+    if (easyOn()) {
+      /* 이지 모드 — 어느 칸이든 올리면 커지며 이름이 나온다 */
+      setHov(p);
+      if (!p) { tip.hidden = true; return; }
+      var u = U[+p.dataset.i], g = guessOf(u.id);
+      tip.innerHTML = esc(u.name) + '<small>' + esc(g ? pts(g.score) + ' · ' + g.rank + '번째' : (touch && armed === p ? '한 번 더 누르면 부르기' : u.sub)) + '</small>';
+      place(e);
+      return;
+    }
+    setHov(null);
+    p = e.target.closest && e.target.closest('path.hit');
+    if (!p) { tip.hidden = true; return; }
+    var v = U[+p.dataset.i], gg = guessOf(v.id);
+    tip.textContent = gg ? (v.name + ' · ' + pts(gg.score) + ' · ' + (gg.rank ? gg.rank + '번째' : '정답')) : v.name;
+    place(e);
+  }
   svg.addEventListener('pointermove', show);
-  svg.addEventListener('pointerdown', show);
-  svg.addEventListener('pointerleave', function(){ tip.hidden = true; });
+  svg.addEventListener('pointerdown', function(e){ touch = e.pointerType !== 'mouse'; show(e); });
+  svg.addEventListener('pointerleave', function(){ tip.hidden = true; setHov(null); });
+  svg.addEventListener('click', function(e){
+    if (!easyOn()) return;
+    var p = e.target.closest && e.target.closest('path');
+    if (!p) return;
+    /* 손가락은 처음 누르면 이름만 — 같은 곳을 한 번 더 눌러야 부른다. 잘못 눌러 부르는 일이 없게 */
+    if (touch && armed !== p) { armed = p; show(e); return; }
+    armed = null; tip.hidden = true; setHov(null);
+    guess(+p.dataset.i);
+  });
+}
+/* 올라간 칸은 맨 위에 겹친 모양으로 크게 그린다. 원래 칸을 옮기면 누르는 도중에
+   노드가 빠졌다 들어가 브라우저가 클릭을 버리므로, 칸은 그대로 두고 겹칠 모양만 바꾼다 */
+var HOV = null, hovEl = null;
+function setHov(p){
+  if (HOV === p) return;
+  HOV = p || null;
+  if (!hovEl) { hovEl = document.createElementNS(NS, 'path'); hovEl.setAttribute('class', 'hov'); }
+  if (!HOV) { if (hovEl.parentNode) hovEl.parentNode.removeChild(hovEl); return; }
+  hovEl.setAttribute('d', HOV.getAttribute('d'));
+  var svg = $('#map');
+  if (svg.lastChild !== hovEl) svg.appendChild(hovEl);
 }
 function pct(u){ return 'left:' + (u.hx / M.w * 100) + '%;top:' + (u.hy / M.h * 100) + '%'; }
 function paintMap(){
@@ -607,7 +661,7 @@ function guess(i){
     S.lastId = r.id;
     if (r.correct) {
       S.solved = true; S.answer = r.answer;
-      if (S.free) { S.elapsed = now() - S.started; freeStat(S.list.length); }
+      if (S.free) { S.elapsed = now() - S.started; freeStat(S.list.length, S.easy); }
       else { S.elapsed = r.elapsed; S.order = r.order; S.board = r.board; }
     }
     msg('');
@@ -630,11 +684,12 @@ function giveup(){
 
 // ══════════════════════════════ 그리기
 function render(){
-  $('#no').textContent = S.free ? '무한 연습' : (S.no ? '제' + S.no + '호' : '');
+  $('#no').textContent = S.free ? (S.easy ? '이지 모드' : '무한 모드') : (S.no ? '제' + S.no + '호' : '');
   var done = S.solved || S.gaveup;
   $('#askform').hidden = done;
   $('#q').disabled = $('#go').disabled = done || S.day == null;
   $('#btnGiveup').hidden = done || !S.list.length;
+  $('#mapwrap').classList.toggle('easy', easyOn());
   $('#hudlabel').textContent = S.solved ? S.list.length + '번 만에 맞힘' : S.gaveup ? '포기함' : S.started ? S.list.length + '곳 부름' : '첫 추측부터 잽니다';
 
   // 방금 부른 곳
@@ -690,9 +745,9 @@ function renderDone(){
   var box = $('#done');
   if (!S.solved && !S.gaveup) { box.hidden = true; return; }
   var a = S.answer, h = '';
-  $('#doneTitle').textContent = (S.free ? '무한 연습 · ' : '') + (S.solved ? '맞혔습니다' : '포기했습니다');
+  $('#doneTitle').textContent = (S.free ? (S.easy ? '이지 모드 · ' : '무한 모드 · ') : '') + (S.solved ? '맞혔습니다' : '포기했습니다');
   if (S.free) {
-    var f = freeStat(0);
+    var f = freeStat(0, S.easy);
     h += shapeSvg(a.id);
     h += '<h2>' + (S.solved ? '📍 ' : '정답은 ') + esc(a.full) + '</h2>';
     h += '<p class="big">' + S.list.length + '번 만에' + (S.solved ? ' · ' + fmtKo(S.elapsed) : '') + '</p>';
@@ -700,7 +755,7 @@ function renderDone(){
     h += '<div class="row"><button class="btn dark" id="again">한 판 더</button>' +
          '<button class="btn" id="quitFree">그만두기</button></div>';
     box.innerHTML = h; box.hidden = false;
-    $('#again').onclick = function(){ $('#dlgDone').close(); startFree(); };
+    $('#again').onclick = function(){ $('#dlgDone').close(); startFree(S.easy); };
     $('#quitFree').onclick = endFree;
     return;
   }
@@ -904,26 +959,27 @@ function titleFinished(){
   tick();
 }
 
-/* 무한 연습 — 오늘 판은 잠시 치워 두고 새 판을 연다. 기록은 서버에 남지 않는다 */
-function startFree(){
-  var b = $('#btnFree');
+/* 무한 모드·이지 모드 — 오늘 판은 잠시 치워 두고 새 판을 연다. 기록은 서버에 남지 않는다.
+   이지 모드는 같은 연습 판에 지도 도움(올리면 이름, 누르면 부르기)만 켠 것이다 */
+function startFree(easy){
+  var b = $(easy ? '#btnEasy' : '#btnFree'), label = b.textContent;
   b.disabled = true; b.textContent = '여는 중…';
   api('/api/free').then(function(r){
-    S.daily = { list:S.list, solved:S.solved, gaveup:S.gaveup, started:S.started, elapsed:S.elapsed,
-                answer:S.answer, order:S.order, board:S.board, lastId:S.lastId };
-    S.free = r.rid; S.list = []; S.solved = false; S.gaveup = false;
+    if (!S.free) S.daily = { list:S.list, solved:S.solved, gaveup:S.gaveup, started:S.started, elapsed:S.elapsed,
+                             answer:S.answer, order:S.order, board:S.board, lastId:S.lastId };
+    S.free = r.rid; S.easy = !!easy; S.list = []; S.solved = false; S.gaveup = false;
     S.started = null; S.elapsed = null; S.answer = null; S.order = null; S.board = null; S.lastId = null;
-    b.disabled = false; b.textContent = '무한 연습';
-    msg('어디든 하나 불러서 시작하세요.');
+    b.disabled = false; b.textContent = label;
+    msg(easy ? easyHint() : '어디든 하나 불러서 시작하세요.');
     startGame();
   }).catch(function(e){
-    b.disabled = false; b.textContent = '무한 연습';
+    b.disabled = false; b.textContent = label;
     msg('연습 판을 못 열었습니다: ' + e.message, true);
   });
 }
 function endFree(){
   var d = S.daily || {};
-  S.free = null; S.daily = null;
+  S.free = null; S.daily = null; S.easy = false;
   S.list = d.list || []; S.solved = !!d.solved; S.gaveup = !!d.gaveup; S.started = d.started || null;
   S.elapsed = d.elapsed == null ? null : d.elapsed; S.answer = d.answer || null;
   S.order = d.order || null; S.board = d.board || null; S.lastId = d.lastId || null;
@@ -1019,7 +1075,8 @@ $('#askf').addEventListener('submit', function(e){ e.preventDefault(); if (!pend
 $('#btnStart').addEventListener('click', function(){ (S.solved || S.gaveup) ? openDone() : startGame(); });
 /* 결과 창을 닫으면 타이틀로 — 게임 화면에 남겨 두지 않는다 */
 $('#dlgDone').addEventListener('close', function(){ if (!S.free && (S.solved || S.gaveup) && $('#title').hidden) backToTitle(); });
-$('#btnFree').addEventListener('click', startFree);
+$('#btnFree').addEventListener('click', function(){ startFree(false); });
+$('#btnEasy').addEventListener('click', function(){ startFree(true); });
 $('#tabToday').addEventListener('click', function(){ openBoard('today'); });
 $('#tabAll').addEventListener('click', function(){ openBoard('all'); });
 $('#tabBest').addEventListener('click', function(){ openBoard('best'); });
