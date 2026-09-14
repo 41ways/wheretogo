@@ -284,7 +284,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
     <p class="tfree" id="tfree"></p>
     <div class="trow">
       <button class="btn" id="btnHelp2">규칙</button>
-      <button class="btn" id="btnBoard2">오늘 순위</button>
+      <button class="btn" id="btnBoard2">순위</button>
     </div>
     <p class="tyday" id="tyday"></p>
   </section>
@@ -337,7 +337,7 @@ dialog::backdrop{background:rgba(17,17,17,.38)}
       </table>
       <div class="empty" id="empty">아무 데나 하나 불러 보세요.<br>점수를 보고 좁혀 가면 됩니다.</div>
       <div class="tools">
-        <button class="btn" id="btnBoard">오늘 순위</button>
+        <button class="btn" id="btnBoard">순위</button>
         <button class="btn" id="btnHelp">규칙</button>
         <button class="btn quiet" id="btnGiveup" hidden>포기</button>
       </div>
@@ -718,7 +718,7 @@ function guess(i){
 
 function giveup(){
   if (S.solved || S.gaveup || S.day == null) return;
-  if (!confirm(S.free ? '이 판을 접고 정답을 볼까요?' : '포기하면 정답을 보여 주고, 오늘 순위에는 오르지 않습니다. 포기할까요?')) return;
+  if (!confirm(S.free ? '이 판을 접고 정답을 볼까요?' : '포기하면 정답을 보여 주고, 순위에는 오르지 않습니다. 포기할까요?')) return;
   (S.free ? api('/api/free/giveup', { rid:S.free }) : api('/api/giveup', { day:S.day, pid:PID })).then(function(r){
     S.gaveup = true; S.answer = r.answer; render(); openDone();
   }).catch(function(e){ msg('못 보냈습니다: ' + e.message, true); });
@@ -814,11 +814,11 @@ function renderDone(){
     h += '<p class="pwnote" id="pwnote">' + (tg ? '지금 <b>' + esc(tg) + '</b> 로 남깁니다 · ' : '') +
          '같은 이름에 같은 비밀번호를 쓰면 기기가 달라도 한 사람으로 셉니다. 다른 비밀번호를 쓰면 ' +
          esc(nm || '이름') + '#2 로 갈라집니다.<br>되찾을 방법이 없으니 <b>다른 데 쓰는 비밀번호는 쓰지 마세요.</b></p>';
-    h += '<div class="row" style="margin-top:8px"><button class="btn" id="share">결과 복사</button><button class="btn" id="seeBoard">오늘 순위 보기</button></div>';
+    h += '<div class="row" style="margin-top:8px"><button class="btn" id="share">결과 복사</button><button class="btn" id="seeBoard">순위 보기</button></div>';
   } else {
     h += shapeSvg(a.id) + '<h2>정답은 ' + esc(a.full) + '</h2>';
     h += '<p>' + S.list.length + '곳 부르고 포기했습니다. 포기한 판은 순위에 오르지 않습니다.</p>';
-    h += '<div class="row"><button class="btn" id="seeBoard">오늘 순위 보기</button></div>';
+    h += '<div class="row"><button class="btn" id="seeBoard">순위 보기</button></div>';
   }
   h += '<div class="next num" id="nextIn"></div>';
   box.innerHTML = h;
@@ -915,7 +915,7 @@ function openBoard(which){
   $('#tabAll').className = 'tab' + (tab === 'all' ? ' on' : '');
   $('#tabBest').className = 'tab' + (tab === 'best' ? ' on' : '');
   $('#boardTitle').textContent = tab === 'all' ? '플레이어 순위' : tab === 'best' ? '최고 기록'
-    : '오늘 순위' + (S.no ? ' · 제' + S.no + '호' : '');
+    : '순위' + (S.no ? ' · 제' + S.no + '호' : '');
   $('#boardBody').innerHTML = '<p style="color:var(--faint)">불러오는 중…</p>';
   if (!d.open) d.showModal();
   if (S.day == null) { $('#boardBody').innerHTML = '<p>서버에 연결하지 못했습니다.</p>'; return; }
