@@ -3,8 +3,8 @@
 
    GET  /api/today?me=<pid>        오늘 문제 번호, 푼 사람 수, 어제 정답, 내 기록
    GET  /api/top?day=&me=<pid>     그날 순위 (위 20명 + 내 자리)
-   GET  /api/all?me=<pid>          전체 순위 — 맞힌 날 수 순, 같으면 평균이 빠른 순
-   GET  /api/best?me=<pid>         최고 기록 — 여태 가장 빨리 맞힌 판들
+   GET  /api/all?me=<pid>          전체 순위 — 맞힌 날 수 순, 같으면 평균 횟수가 적은 순, 그다음 평균이 빠른 순
+   GET  /api/best?me=<pid>         최고 기록 — 여태 가장 적게 불러 맞힌 판들 (같으면 빠른 판)
    POST /api/guess                 { day, pid, id, name }  → 점수·순위 (맞히면 기록)
    POST /api/giveup                { day, pid }            → 정답 공개, 순위에서 빠짐
    POST /api/name                  { day, pid, name, pw }  → 순위표 이름·플레이어 등록
@@ -72,8 +72,8 @@ const dayOk = day => Number.isInteger(day) && (day === kstDay() || day === kstDa
 const unitOut = i => ({ id: UNITS[i].id, name: UNITS[i].name, full: UNITS[i].full });
 
 // ══════════════════════════════════ 순위
-/* 빠른 순. 시간이 같으면 적게 부른 사람, 그것도 같으면 먼저 맞힌 사람 */
-const ORDER = 'elapsed ASC, guesses ASC, solved_at ASC';
+/* 적게 부른 순. 횟수가 같으면 빠른 사람, 그것도 같으면 먼저 맞힌 사람 */
+const ORDER = 'guesses ASC, elapsed ASC, solved_at ASC';
 const rowOut = (r, rank, me) => ({ rank, name: r.tag || r.name || '이름없음', elapsed: r.elapsed, guesses: r.guesses, me: !!me });
 
 async function board(env, day, me) {
@@ -90,7 +90,7 @@ async function board(env, day, me) {
     if (r) {
       const a = await env.DB.prepare(
         'SELECT COUNT(*) AS c FROM plays WHERE day = ?1 AND gaveup = 0 AND solved_at IS NOT NULL AND ' +
-        '(elapsed < ?2 OR (elapsed = ?2 AND (guesses < ?3 OR (guesses = ?3 AND solved_at < ?4))))'
+        '(guesses < ?3 OR (guesses = ?3 AND (elapsed < ?2 OR (elapsed = ?2 AND solved_at < ?4))))'
       ).bind(day, r.elapsed, r.guesses, r.solved_at).first();
       mine = rowOut(r, (a ? a.c : 0) + 1, true);
     }
@@ -150,47 +150,47 @@ export default {
       }
 
       /* 전체 순위 — 날마다 지워지는 그날 순위와 달리 쌓인 판을 사람(pid)별로 묶는다.
-         맞힌 날이 많은 사람이 위, 같으면 평균이 빠른 사람이 위 */
+         맞힌 날이 많은 사람이 위, 같으면 평균 횟수가 적은 사람, 그것도 같으면 평균이 빠른 사람이 위 */
       if (url.pathname === '/api/all' && req.method === 'GET') {
         const me = url.searchParams.get('me');
         const [top, tot] = await env.DB.batch([
           env.DB.prepare(
-            "SELECT COALESCE(o.tag, 'ᴾ' || p.pid) AS who, COUNT(*) AS days, AVG(p.elapsed) AS avg, MIN(p.elapsed) AS best, " +
+            "SELECT COALESCE(o.tag, 'ᴾ' || p.pid) AS who, COUNT(*) AS days, AVG(p.guesses) AS avgg, AVG(p.elapsed) AS avg, MIN(p.elapsed) AS best, " +
             'MAX(o.tag) AS tag, ' +
             '(SELECT x.name FROM plays x WHERE x.pid = p.pid AND x.solved_at IS NOT NULL ORDER BY x.day DESC LIMIT 1) AS name ' +
             'FROM plays p LEFT JOIN owners o ON o.pid = p.pid WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL ' +
-            `GROUP BY who ORDER BY days DESC, avg ASC LIMIT ${TOP_N}`),
+            `GROUP BY who ORDER BY days DESC, avgg ASC, avg ASC LIMIT ${TOP_N}`),
           env.DB.prepare("SELECT COUNT(DISTINCT COALESCE(o.tag, 'ᴾ' || p.pid)) AS people, COUNT(*) AS plays " +
             'FROM plays p LEFT JOIN owners o ON o.pid = p.pid WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL'),
         ]);
-        const out = r => ({ name: r.tag || r.name || '이름없음', days: r.days, avg: Math.round(r.avg), best: r.best });
+        const out = r => ({ name: r.tag || r.name || '이름없음', days: r.days, avgg: Math.round(r.avgg * 10) / 10, avg: Math.round(r.avg), best: r.best });
         const myTag = pidOk(me) ? (await env.DB.prepare('SELECT tag FROM owners WHERE pid = ?1').bind(me).first() || {}).tag : null;
         const myWho = myTag || (me ? 'ᴾ' + me : null);
         const rows = top.results.map((r, i) => ({ rank: i + 1, ...out(r), me: !!(myWho && r.who === myWho) }));
         let mine = rows.find(r => r.me) || null;
         if (!mine && pidOk(me)) {
           const r = await env.DB.prepare(
-            'SELECT COUNT(*) AS days, AVG(p.elapsed) AS avg, MIN(p.elapsed) AS best, MAX(o.tag) AS tag, ' +
+            'SELECT COUNT(*) AS days, AVG(p.guesses) AS avgg, AVG(p.elapsed) AS avg, MIN(p.elapsed) AS best, MAX(o.tag) AS tag, ' +
             '(SELECT x.name FROM plays x WHERE x.pid = ?1 AND x.solved_at IS NOT NULL ORDER BY x.day DESC LIMIT 1) AS name ' +
             "FROM plays p LEFT JOIN owners o ON o.pid = p.pid WHERE COALESCE(o.tag, 'ᴾ' || p.pid) = ?2 " +
             'AND p.gaveup = 0 AND p.solved_at IS NOT NULL').bind(me, myWho).first();
           if (r && r.days > 0) {
             const a = await env.DB.prepare(
-              "SELECT COUNT(*) AS c FROM (SELECT COALESCE(o.tag, 'ᴾ' || p.pid) AS who, COUNT(*) AS d, AVG(p.elapsed) AS a " +
+              "SELECT COUNT(*) AS c FROM (SELECT COALESCE(o.tag, 'ᴾ' || p.pid) AS who, COUNT(*) AS d, AVG(p.guesses) AS g, AVG(p.elapsed) AS a " +
               'FROM plays p LEFT JOIN owners o ON o.pid = p.pid WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL GROUP BY who) ' +
-              'WHERE d > ?1 OR (d = ?1 AND a < ?2)').bind(r.days, r.avg).first();
+              'WHERE d > ?1 OR (d = ?1 AND (g < ?3 OR (g = ?3 AND a < ?2)))').bind(r.days, r.avg, r.avgg).first();
             mine = { rank: (a ? a.c : 0) + 1, ...out(r), me: true };
           }
         }
         return json({ rows, mine, people: tot.results[0].people, plays: tot.results[0].plays }, 200, h);
       }
 
-      /* 최고 기록 — 꾸준함으로 줄 세우는 전체 순위에서 밀려나는, 한 판의 가장 빠른 기록 */
+      /* 최고 기록 — 꾸준함으로 줄 세우는 전체 순위에서 밀려나는, 한 판의 가장 좋은 기록 (적게 부른 순, 같으면 빠른 순) */
       if (url.pathname === '/api/best' && req.method === 'GET') {
         const me = url.searchParams.get('me');
         const r = await env.DB.prepare(
           'SELECT p.pid, p.name, o.tag, p.day, p.elapsed, p.guesses FROM plays p LEFT JOIN owners o ON o.pid = p.pid ' +
-          'WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL ORDER BY p.elapsed ASC, p.guesses ASC LIMIT 10').all();
+          'WHERE p.gaveup = 0 AND p.solved_at IS NOT NULL ORDER BY p.guesses ASC, p.elapsed ASC LIMIT 10').all();
         return json({ rows: r.results.map((x, i) => ({
           rank: i + 1, name: x.tag || x.name || '이름없음', no: puzzleNo(x.day),
           elapsed: x.elapsed, guesses: x.guesses, me: !!(me && x.pid === me),

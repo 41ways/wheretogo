@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS plays (
   PRIMARY KEY (day, pid)
 );
 CREATE INDEX IF NOT EXISTS plays_rank ON plays (day, gaveup, elapsed, guesses, solved_at);
+-- 순위는 적게 부른 순이 먼저, 같으면 빠른 순
+CREATE INDEX IF NOT EXISTS plays_rank_g ON plays (day, gaveup, guesses, elapsed, solved_at);
 
 -- 플레이어. 이름과 기록용 비밀번호를 묶어 한 사람으로 센다.
 -- 같은 이름에 다른 비밀번호를 쓰면 한결#2, 한결#3 … 으로 갈라진다.
