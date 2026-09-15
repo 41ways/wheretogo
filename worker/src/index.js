@@ -244,6 +244,12 @@ export default {
         if (g == null) return json({ error: '없는 시·군' }, 400, h);
         const now = Date.now();
         const name = cleanName(body.name);
+        /* 어제 판은 자정 전에 시작한 줄만 이어 간다. 새 줄을 만들면 이미 공개된 어제 정답을 한 번에 불러 1위에 오를 수 있다 */
+        const late = day !== kstDay();
+        if (late) {
+          const had = await env.DB.prepare('SELECT 1 FROM plays WHERE day = ?1 AND pid = ?2').bind(day, pid).first();
+          if (!had) return json({ error: '날짜가 바뀌었습니다' }, 409, h);
+        }
         /* 첫 추측이면 줄을 만들고 시계를 켠다. 끝난 판(맞힘·포기)은 더 세지 않는다 */
         const row = await env.DB.prepare(
           'INSERT INTO plays (day, pid, name, started, guesses, list) VALUES (?1, ?2, ?3, ?4, 1, ?5) ' +
@@ -270,6 +276,8 @@ export default {
 
       if (url.pathname === '/api/giveup') {
         const now = Date.now();
+        if (day !== kstDay() && !await env.DB.prepare('SELECT 1 FROM plays WHERE day = ?1 AND pid = ?2').bind(day, pid).first())
+          return json({ error: '날짜가 바뀌었습니다' }, 409, h);
         await env.DB.prepare(
           'INSERT INTO plays (day, pid, started, gaveup) VALUES (?1, ?2, ?3, 1) ' +
           'ON CONFLICT (day, pid) DO UPDATE SET gaveup = 1 WHERE solved_at IS NULL'
@@ -281,6 +289,9 @@ export default {
         const name = cleanName(body.name);
         const pw = String(body.pw == null ? '' : body.pw).slice(0, 64);
         let tag = null;
+        /* 비밀번호로 이름을 맡겨 둔 사람은 비밀번호 없이 이름을 바꿀 수 없다 — 바꿔도 순위에는 맡긴 이름이 계속 나오기 때문 */
+        if (!pw && await env.DB.prepare('SELECT 1 FROM owners WHERE pid = ?1').bind(pid).first())
+          return json({ error: '이 기기는 비밀번호로 이름을 맡겨 두었습니다. 이름을 바꾸려면 비밀번호도 적어 주세요' }, 400, h);
         if (name && pw) {
           tag = await claimTag(env, name, pw, Date.now());
           await env.DB.prepare('INSERT INTO owners (pid, tag, made) VALUES (?1, ?2, ?3) ' +
