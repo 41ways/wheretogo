@@ -701,11 +701,16 @@ function guess(i){
   call.then(function(r){
     S.busy = false;
     if (r.closed) { return load().then(function(){ if ((S.solved || S.gaveup) && $('#title').hidden) backToTitle(); }); }
+    // 판 시작은 첫 추측부터 — 화면에 들어온 것만으로는 세지 않는다(새로고침마다 다시 들어온다)
+    if (!S.started && window.norara) norara.ev('start', { n: 1 });
     if (!S.started) S.started = now();
     S.list.push({ id:r.id, score:r.score, rank:r.rank, correct:r.correct, no:S.list.length + 1 });
     S.lastId = r.id;
     if (r.correct) {
       S.solved = true; S.answer = r.answer;
+      if (window.norara) {
+        norara.ev('end', { n: 1, sec: Math.round((S.elapsed || (now() - S.started)) / 1000) });
+      }
       if (S.free) { S.elapsed = now() - S.started; freeStat(S.list.length, S.hard); }
       else { S.elapsed = r.elapsed; S.order = r.order; S.board = r.board; }
     }
@@ -723,7 +728,9 @@ function giveup(){
   if (S.solved || S.gaveup || S.day == null) return;
   if (!confirm(S.free ? '이 판을 접고 정답을 볼까요?' : '포기하면 정답을 보여 주고, 순위에는 오르지 않습니다. 포기할까요?')) return;
   (S.free ? api('/api/free/giveup', { rid:S.free }) : api('/api/giveup', { day:S.day, pid:PID })).then(function(r){
-    S.gaveup = true; S.answer = r.answer; render(); openDone();
+    S.gaveup = true; S.answer = r.answer;
+    if (window.norara) norara.ev('end', { n: 1, sec: Math.round((now() - S.started) / 1000) });
+    render(); openDone();
   }).catch(function(e){ msg('못 보냈습니다: ' + e.message, true); });
 }
 
@@ -1169,6 +1176,32 @@ document.querySelectorAll('dialog').forEach(function(d){ d.addEventListener('cli
   sc.src = "https://gc.zgo.at/count.js";
   sc.setAttribute("data-goatcounter", "https://41ways.goatcounter.com/count");
   document.head.appendChild(sc);
+
+  // 판 수·인원·걸린 시간 — 게임 코드에서 norara.ev("start", { n: 인원 }) 처럼 부른다.
+  // 날짜·게임·이름으로 묶어 더하기만 하므로 한 판에 한 줄씩 쌓이지 않는다.
+  window.norara = {
+    ev: function (name, o) {
+      o = o || {};
+      o.app = APP;
+      o.ev = name;
+      try {
+        navigator.sendBeacon("https://norara-errors.41ways.workers.dev/ev", JSON.stringify(o));
+      } catch (e) {}
+    }
+  };
+
+  // 얼마나 머물렀는지 — 탭을 덮거나 닫을 때 한 번만. pagehide 만으로는 폰에서 자주 놓친다.
+  var came = Date.now(), told = false;
+  function leaving() {
+    if (told) return;
+    told = true;
+    var sec = Math.round((Date.now() - came) / 1000);
+    if (sec >= 5) window.norara.ev("visit", { sec: sec });   // 스쳐 간 것은 빼고
+  }
+  addEventListener("pagehide", leaving);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") leaving();
+  });
 
   // 화면에서 터진 오류를 모은다. 한 번 열 때 다섯 건까지만 — 같은 오류가 쏟아져도 한도를 안 태우게.
   var left = 5;
